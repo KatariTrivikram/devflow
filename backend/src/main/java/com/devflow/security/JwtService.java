@@ -1,0 +1,105 @@
+package com.devflow.security;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.stereotype.Service;
+
+import javax.crypto.SecretKey;
+import java.nio.charset.StandardCharsets;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Function;
+
+@Service
+public class JwtService {
+
+    private final String secretKey;
+    private final long jwtExpiration;
+
+    public JwtService(
+            @Value("${jwt.secret}") String secretKey,
+            @Value("${jwt.expiration:3600000}") long jwtExpiration) {
+        if (secretKey == null || secretKey.trim().length() < 32) {
+            throw new IllegalArgumentException("JWT secret key must be at least 256 bits (32 characters) for secure HMAC-SHA256 signing");
+        }
+        this.secretKey = secretKey;
+        this.jwtExpiration = jwtExpiration;
+    }
+
+    public String generateToken(UserDetails userDetails) {
+        Map<String, Object> extraClaims = new HashMap<>();
+        if (userDetails instanceof CustomUserDetails customUserDetails) {
+            if (customUserDetails.getId() != null) {
+                extraClaims.put("userId", customUserDetails.getId().toString());
+            }
+            if (customUserDetails.getRole() != null) {
+                extraClaims.put("role", customUserDetails.getRole().name());
+            }
+        }
+        return generateToken(extraClaims, userDetails);
+    }
+
+    public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + jwtExpiration);
+
+        return Jwts.builder()
+                .claims(extraClaims)
+                .subject(userDetails.getUsername())
+                .issuedAt(now)
+                .expiration(expiryDate)
+                .signWith(getSigningKey())
+                .compact();
+    }
+
+    public String extractUsername(String token) {
+        return extractClaim(token, Claims::getSubject);
+    }
+
+    public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
+        final Claims claims = extractAllClaims(token);
+        return claimsResolver.apply(claims);
+    }
+
+    public Claims extractAllClaims(String token) {
+        return Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+    }
+
+    public boolean isTokenValid(String token, UserDetails userDetails) {
+        try {
+            final String username = extractUsername(token);
+            return username != null && username.equals(userDetails.getUsername()) && !isTokenExpired(token);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public boolean isTokenExpired(String token) {
+        try {
+            return extractExpiration(token).before(new Date());
+        } catch (Exception e) {
+            return true;
+        }
+    }
+
+    public Date extractExpiration(String token) {
+        return extractClaim(token, Claims::getExpiration);
+    }
+
+    public long getExpirationMs() {
+        return jwtExpiration;
+    }
+
+    private SecretKey getSigningKey() {
+        byte[] keyBytes = secretKey.getBytes(StandardCharsets.UTF_8);
+        return Keys.hmacShaKeyFor(keyBytes);
+    }
+}

@@ -1,0 +1,14 @@
+target/
+*.class
+*.log
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+.idea/
+*.iml
+.vscode/
+.DS_Store

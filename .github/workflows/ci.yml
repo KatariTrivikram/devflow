@@ -1,0 +1,81 @@
+name: DevFlow CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend-test:
+    name: Backend Unit & Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21 (Eclipse Temurin)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+          cache: 'maven'
+          cache-dependency-path: 'backend/pom.xml'
+
+      - name: Run Backend Unit & WebMvc Tests
+        working-directory: backend
+        run: mvn test "-Dtest=!*IntegrationTest" -B
+
+      - name: Run Backend Integration Tests (Testcontainers PostgreSQL)
+        working-directory: backend
+        run: mvn test "-Dtest=*IntegrationTest" -B
+
+  frontend-test:
+    name: Frontend Quality & Build Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      - name: Install Frontend Dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Run Frontend Tests (Vitest)
+        working-directory: frontend
+        run: npm test -- --run
+
+      - name: Run Frontend Linter (Oxlint)
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Build Frontend Production Bundle (Vite)
+        working-directory: frontend
+        run: npm run build
+
+  docker-build:
+    name: Docker Compose & Image Build Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Docker Compose Configuration
+        run: docker compose --env-file .env.example config
+
+      - name: Build Production Docker Images
+        run: docker compose --env-file .env.example build

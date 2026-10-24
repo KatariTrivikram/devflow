@@ -1,0 +1,41 @@
+# IDEs and Tools
+.idea/
+.vscode/
+*.iml
+*.swp
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Environment variables
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Java / Spring Boot / Maven
+backend/target/
+*.class
+*.log
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+*.rar
+
+# Node / React / Vite
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.eslintcache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
