@@ -135,8 +135,7 @@ Browser Client (User's machine)
     └── Dispatches API Calls  ──> Spring Boot Container (Tomcat :8080)
                                       └── JDBC Queries ──> Supabase PostgreSQL (External)
 ```
-- **Direct Browser Communication**: Because the React frontend executes inside the user's browser, API calls route to `VITE_API_BASE_URL` (`http://localhost:8080`), protected by CORS.
-- **Reverse Proxy Fallback**: Nginx is also configured to forward any relative `/api/` requests to `http://backend:8080/api/` inside `devflow-network`.
+- **Direct Browser Communication**: Because the React frontend executes inside the user's browser, API calls route directly to `VITE_API_BASE_URL`, protected by backend CORS. The frontend container acts purely as a static web server without requiring an upstream backend proxy.
 - **SPA Client Routing**: Nginx uses `try_files $uri $uri/ /index.html;` to ensure deep routes (`/dashboard`, `/projects/:id`, `/issues/:id`, `/notifications`, `/search`) load seamlessly without HTTP 404 errors on browser refresh.
 
 ### 7. Execution Environments Comparison
